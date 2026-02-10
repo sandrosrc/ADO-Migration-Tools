@@ -12,6 +12,7 @@ This project contains a set of scripts to help migrate Azure DevOps projects, in
 
 - `main.sh` - Main script that orchestrates the migration process
 - `setup.sh` - Initial setup and configuration
+- `init.sh` - Work Items list initialization
 - `variables.sh` - Contains shared variables used across scripts
 - `dashboards.sh` - Handles dashboard migration
 - `workitems.sh` - Handles work item migration
@@ -57,4 +58,6 @@ The script includes error handling and will stop if any step fails. Check the er
 - Make sure you have the necessary permissions in both source and target organizations
 - The migration process may take some time depending on the amount of data being migrated
 - It's recommended to test the migration with a small project first
+- Your first retrieve process will take much longer than the next
+- If the work items list from the old organization is not retrieved first, the script will automatically fetch it during the migration process
 

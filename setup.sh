@@ -69,14 +69,15 @@ fi
 OLD_PAT=$(cat .azure/old_pat.txt)
 NEW_PAT=$(cat .azure/new_pat.txt)
 
-rm -rf $OLD_PROJECT_NAME
-mkdir $OLD_PROJECT_NAME
-mkdir $OLD_PROJECT_NAME/Dashboards
-mkdir $OLD_PROJECT_NAME/WorkItems
-mkdir $OLD_PROJECT_NAME/Queries
-mkdir $OLD_PROJECT_NAME/Variables
-mkdir $OLD_PROJECT_NAME/Pipelines
-mkdir $OLD_PROJECT_NAME/.setup
+rm -rf $OLD_PROJECT_NAME >/dev/null 2>&1
+mkdir $OLD_PROJECT_NAME >/dev/null 2>&1
+mkdir $OLD_PROJECT_NAME/Dashboards >/dev/null 2>&1
+mkdir $OLD_PROJECT_NAME/WorkItems >/dev/null 2>&1
+mkdir $OLD_PROJECT_NAME/Queries >/dev/null 2>&1
+mkdir $OLD_PROJECT_NAME/Variables >/dev/null 2>&1
+mkdir $OLD_PROJECT_NAME/Pipelines >/dev/null 2>&1
+mkdir $OLD_PROJECT_NAME/.setup >/dev/null 2>&1
+mkdir -p .init && mkdir -p .init/WorkItems >/dev/null 2>&1
 
 ##########################################################################################
 ############################## /!\ DON'T TOUCH ANYTHING /!\ ##############################

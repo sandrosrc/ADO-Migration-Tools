@@ -3,51 +3,19 @@
 source variables.sh
 set -e
 
-# Create variable with spaces instead of %20
 OLD_PROJECT_NAME_SPACES=$(echo "$OLD_PROJECT_NAME" | sed 's/%20/ /g')
 
-############################################################
-################### RETRIEVE WORKITEMS #####################
-############################################################
-
-curl -u :$OLD_PAT \
-     -H "Accept: application/json" \
-     -H "Content-Type: application/json" \
-     -X POST \
-     "https://dev.azure.com/${OLD_ORGANIZATION_NAME}/${OLD_PROJECT_NAME}/${OLD_TEAM_ID_1}/_apis/wit/wiql?api-version=7.1-preview.2" \
-     -d '{"query": "SELECT [Id] from WorkItems"}' \
-     -o $OLD_PROJECT_NAME/WorkItems/WorkItems-List.json >/dev/null 2>&1
-
-jq -r '.workItems[].id' $OLD_PROJECT_NAME/WorkItems/WorkItems-List.json > $OLD_PROJECT_NAME/WorkItems/all-ids.txt
-echo "Work Items list retrieved"
-
-split_workitem_ids() {
-     local input_file="$OLD_PROJECT_NAME/WorkItems/all-ids.txt"
-     local output_prefix="$OLD_PROJECT_NAME/WorkItems/WorkItems-IDs-part-"
-     local total=$(wc -l < "$input_file")
-     local per_file=$(( (total + 99) / 100 ))
-    
-     split -l $per_file "$input_file" "$output_prefix"
-    
-     local y=1
-     for f in $output_prefix*; do
-          mv "$f" "$output_prefix$y.json"
-          jq -R -s 'split("\n")[:-1]' "$output_prefix$y.json" > temp.json && mv temp.json "$output_prefix$y.json"
-          jq -r '.[]' "$output_prefix$y.json" > temp && mv temp "$output_prefix$y.json"
-          y=$((y+1))
-     done
-}
-
-# Function to transform JSON content
 transform_json() {
      local file=$1
      local id=$2
      
-     # Format JSON and ensure array structure
      jq '.' "$file" > temp-$id.json
      jq '[.]' temp-$id.json > "$file"
      
      sed -i -e "s/${OLD_PROJECT_NAME}/${NEW_PROJECT_NAME}/g" "$file"
+     sed -i -e 's/ModisCloud/AkkodisDevOps/g' "$file"
+     sed -i -e 's/modiscloud.net/akkodis.com/g' "$file"
+     sed -i -e 's/akkodisgroup.com/akkodis.com/g' "$file"
      
      jq '.[0] | del(.id, .url, ._links) | {
           "op": "add",
@@ -58,7 +26,6 @@ transform_json() {
      rm -f temp-$id.json
 }
 
-# Function to map work item types
 map_workitem_type() {
     local type=$1
     case $type in
@@ -80,23 +47,17 @@ run_command() {
 
      if [[ -z "$id" ]]; then
           return
+     elif [ ! -f ".init/WorkItems/item-$id.json" ]; then
+          return
      fi
 
-     curl -u :$OLD_PAT \
-          -H "Accept: application/json" \
-          -X GET \
-          "https://dev.azure.com/${OLD_ORGANIZATION_NAME}/${OLD_PROJECT_NAME}/_apis/wit/workitems/${id}?api-version=7.1-preview.2" \
-          -o $OLD_PROJECT_NAME/WorkItems/item-$id.json >/dev/null 2>&1
-
-     jq . $OLD_PROJECT_NAME/WorkItems/item-$id.json > temp-$id.json && mv temp-$id.json $OLD_PROJECT_NAME/WorkItems/item-$id.json
-
-     if [ "$(jq -r '.fields."System.TeamProject"' $OLD_PROJECT_NAME/WorkItems/item-$id.json)" = "$OLD_PROJECT_NAME" ] || \
-     [ "$(jq -r '.fields."System.TeamProject"' $OLD_PROJECT_NAME/WorkItems/item-$id.json)" = "$OLD_PROJECT_NAME_SPACES" ]; then
+     if [ "$(jq -r '.fields."System.TeamProject"' .init/WorkItems/item-$id.json 2>/dev/null)" = "$OLD_PROJECT_NAME" ] || \
+     [ "$(jq -r '.fields."System.TeamProject"' .init/WorkItems/item-$id.json 2>/dev/null)" = "$OLD_PROJECT_NAME_SPACES" ]; then
+          cp .init/WorkItems/item-$id.json $OLD_PROJECT_NAME/WorkItems/item-$id.json
           WORK_ITEM_TYPE=$(jq -r '.fields."System.WorkItemType"' $OLD_PROJECT_NAME/WorkItems/item-$id.json)
           WORK_ITEM_TYPE=$(map_workitem_type "$WORK_ITEM_TYPE")
           transform_json "$OLD_PROJECT_NAME/WorkItems/item-$id.json" "$id"
      else
-          rm -f $OLD_PROJECT_NAME/WorkItems/item-$id.json
           return
      fi
 
@@ -109,20 +70,27 @@ run_command() {
           -o $OLD_PROJECT_NAME/WorkItems/new-item-$id.json >/dev/null 2>&1
 }
 
-total=$(wc -l < $OLD_PROJECT_NAME/WorkItems/all-ids.txt)
-per_file=$(( (total + 99) / 100 ))
+process_chunk() {
+    local chunk_file=$1
+    while IFS= read -r id; do
+        run_command "$id" &
+        while (( $(jobs -r | wc -l) >= 100 )); do
+            sleep 0.1
+        done
+    done < "$chunk_file"
+    wait
+}
 
-split_workitem_ids
+total_ids=$(wc -l < .init/WorkItems/all-ids.txt)
+chunk_size=$(( (total_ids + 99) / 100))
+split -l $chunk_size .init/WorkItems/all-ids.txt .init/WorkItems/chunk_
 
-for file in $OLD_PROJECT_NAME/WorkItems/WorkItems-IDs-part-*.json; do
-     while IFS= read -r id; do
-          run_command "$id" "$file" &
-          while (( $(jobs -r | wc -l) >= 100 )); do
-               sleep 0.1
-          done
-     done < "$file"
-     rm -f "$file"
+for chunk in .init/WorkItems/chunk_*; do
+    process_chunk "$chunk" &
 done
+
 wait
+
+rm -f .init/WorkItems/chunk_*
 
 echo "Work items deployed"

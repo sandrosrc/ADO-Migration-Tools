@@ -19,6 +19,13 @@ NEW_ORGANIZATION_NAME="your-target-organization"
 
 bash setup.sh || { echo "Error: Initial setup failed"; exit 1; }
 bash variables.sh || { echo "Error: Variables.sh failed"; exit 1; }
+
+if [ ! -f ".init/WorkItems/.done" ]; then
+    bash init.sh || { echo "Error: Initialization failed"; exit 1; }
+else
+    echo "Work Items list retrieved"
+fi
+
 bash dashboards.sh || { echo "Error: Failed to retrieve dashboards"; exit 1; }
 bash workitems.sh || { echo "Error: Failed to retrieve workitems"; exit 1; }
 bash queries.sh || { echo "Error: Failed to retrieve queries"; exit 1; }

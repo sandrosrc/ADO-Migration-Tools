@@ -42,6 +42,7 @@ for id in $(jq -r '[.value[].id] | join(" ")' $OLD_PROJECT_NAME/Dashboards/dashb
      done
      
      jq '.id = ""' $OLD_PROJECT_NAME/Dashboards/dashboard-$id.json > temp.json && mv temp.json $OLD_PROJECT_NAME/Dashboards/dashboard-$id.json
+     sed -i -e 's/ModisCloud/AkkodisDevOps/g' $OLD_PROJECT_NAME/Dashboards/dashboard-$id.json
 done
 
 echo "Dashboards retrieved"

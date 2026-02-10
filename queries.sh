@@ -49,7 +49,7 @@ while read -r id; do
      jq . $OLD_PROJECT_NAME/Queries/new-query-$id.json > temp.json && mv temp.json $OLD_PROJECT_NAME/Queries/new-query-$id.json
      NEW_ID=$(jq -r '.id' $OLD_PROJECT_NAME/Queries/new-query-$id.json)
 
-     #### Replace old queries ID with new ID ####
+     ##### Replace old queries ID with new ID #####
      for file in $OLD_PROJECT_NAME/Dashboards/dashboard-*.json; do
           if grep -q "$OLD_ID" $file; then
                sed -i -e "s/$OLD_ID/$NEW_ID/g" $file
@@ -67,7 +67,8 @@ echo "Queries uploaded"
 for id in $(jq -r '[.value[].id] | join(" ")' $OLD_PROJECT_NAME/Dashboards/dashboards.json); do
      curl -u :$NEW_PAT \
           -H "Content-Type: application/json" \
-          -d @$OLD_PROJECT_NAME/Dashboards/dashboard-$id.json \           -X POST \
+          -d @$OLD_PROJECT_NAME/Dashboards/dashboard-$id.json \
+          -X POST \
           "https://dev.azure.com/${NEW_ORGANIZATION_NAME}/${NEW_PROJECT_NAME}/_apis/dashboard/dashboards?api-version=7.2-preview.3" \
           -o $OLD_PROJECT_NAME/Dashboards/new-dashboard-$id.json >/dev/null 2>&1
 done
